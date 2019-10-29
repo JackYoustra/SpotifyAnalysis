@@ -5,6 +5,8 @@ from collections import defaultdict
 
 root_path = Path("Spotify_Data")
 
+output_path= Path("out")
+
 if not root_path.exists():
     print("Please have a local copy of your spotify data in the correct location to continue")
     exit(1)
@@ -47,8 +49,17 @@ for song, playtime in sortedSongsPlaytimes:
 def plot_song_playtimes(songPlaytimes):
     import matplotlib.pyplot as plt
     x = range(len(songPlaytimes))
-    y = [playtime for _, playtime in sortedSongsPlaytimes]
-    # TODO once I have a computer that actually has a working version of numpy installed. Stupid tablet
+    y = [playtime / 1000 for _, playtime in sortedSongsPlaytimes]
+    fig, ax = plt.subplots(tight_layout=True)
+    ax.plot(x, y)
+    ax.set(xlabel='Number of songs', ylabel='Song duration (secs)', title='Songs with time less than or equal to x')
+    ax.grid()
+    fig.savefig(output_path / "song_playtimes.png")
+
+    ax.set_yscale("log")
+    ax.set(xlabel='Number of songs', ylabel='Log song duration (secs)', title='Songs with time less than or equal to x')
+    fig.savefig(output_path / "song_playtimes_log.png")
+
 
 plot_song_playtimes(sortedSongsPlaytimes)
 
@@ -67,21 +78,42 @@ class Playlist:
         self.modificationDate = modificationDate
         self.entries = []
 
-class Track:
+    def __str__(self):
+        return "Playist {} (last modified: {}): {}".format(self.name, self.modificationDate, self.entries)
+    
+    def __repr__(self):
+        return str(self)
+
+class PlaylistEntry:
     def __init__(self, title, artist, album):
         self.title = title
         self.artist = artist
         self.album = album
 
+    def __str__(self):
+        return "{} - {} ({})".format(self.title, self.artist, self.album)
+
+    def __repr__(self):
+        return str(self)
+
 playlists = []
+
+def create_entry(entryDict):
+    trackDict = entryDict["track"]
+    return PlaylistEntry(trackDict["trackName"], trackDict["artistName"], trackDict["albumName"])
 
 for playlist_file in root_path.glob("Playlist[0-9]*.json"):
     with open(playlist_file, 'rb') as f:
-        playlist_part = json.load(f)
-        playlist_part = playlist_part["playlists"]
-        playlist = Playlist(playlist_part["name"], playlist_part["lastModifiedDate"])
-        playlist.entries = [create_track(trackDict) for trackDict in playlist[items]]
-        
-        
+        playlists_part = json.load(f)["playlists"]
+        for playlist_repr in playlists_part:
+            playlist = Playlist(playlist_repr["name"], playlist_repr["lastModifiedDate"])
+            playlist.entries = [create_entry(trackDict) for trackDict in playlist_repr["items"]]
+            playlists.append(playlist)
+print(playlists) 
 
+# Distinguish secular moves from active moves: do we move it, or not
+
+# now let's create song durations
+# a song is as long as its longest play, or a minute
+# if a song plays for 
 
